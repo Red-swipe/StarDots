@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.11', '3.12', '3.13']
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run unit tests
+        run: |
+          python -m unittest discover -s tests -v
+
+      - name: Validate CLI execution
+        run: |
+          python stardots.py --help
+          python stardots.py presets
+          python stardots.py starfield --width 60 --height 15 --density 0.1 --seed 42
+          python stardots.py galaxy --width 60 --height 15 --arms 2 --seed 42
+          python stardots.py constellation --preset orion --seed 42
+          python stardots.py nebula --width 60 --height 15 --seed 42

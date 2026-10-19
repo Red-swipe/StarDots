@@ -23,7 +23,11 @@ class StarfieldGenerator(BaseGenerator):
         if not (0.0 < density <= 1.0):
             raise ValueError(f"Density must be between 0.0 (exclusive) and 1.0 (inclusive), got {density}")
         self.density = density
-        self.palette = list(palette) if palette else list(DEFAULT_STAR_PALETTE)
+        if palette is not None:
+            self.palette = list(palette)
+        else:
+            self.palette = list(DEFAULT_STAR_PALETTE)
+
         if not self.palette:
             raise ValueError("Palette cannot be empty")
 

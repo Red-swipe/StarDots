@@ -25,7 +25,8 @@ def sanitize_filename(name: str) -> str:
     """Sanitize a filename to ensure cross-platform safety (Windows, Linux, macOS)."""
     # Remove characters forbidden on Windows/Linux: < > : " / \ | ? *
     clean = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
-    clean = clean.strip(" .")
+    clean = re.sub(r'_+', '_', clean)
+    clean = clean.strip(" ._")
     return clean or "artwork"
 
 
