@@ -57,12 +57,12 @@ class Canvas:
         """Check if coordinate is protected."""
         return (x, y) in self._protected_coords
 
-    def draw_text(self, x: int, y: int, text: str, protect: bool = False) -> None:
+    def draw_text(self, x: int, y: int, text: str, protect: bool = False, overwrite_protected: bool = False) -> None:
         """Draw horizontal text starting at (x, y)."""
         for i, ch in enumerate(text):
             tx = x + i
             if self.in_bounds(tx, y):
-                self.set(tx, y, ch, protect=protect, overwrite_protected=True)
+                self.set(tx, y, ch, protect=protect, overwrite_protected=overwrite_protected)
 
     def draw_line(
         self,
