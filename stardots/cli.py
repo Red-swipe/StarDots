@@ -241,26 +241,29 @@ def run_nebula(args: argparse.Namespace) -> int:
 
 def run_presets() -> int:
     """Display available presets with descriptions."""
-    print("=" * 60)
-    print("StarDots — Built-in Constellation & Celestial Presets")
-    print("=" * 60)
-    seen = set()
-    for key, p in CONSTELLATION_PRESETS.items():
-        if p.name in seen:
-            continue
-        seen.add(p.name)
-        star_count = len(p.stars)
-        line_count = len(p.lines)
-        print(f"\n* {p.name.upper()} ({star_count} stars, {line_count} connections)")
-        print(f"  Description: {p.description}")
-        sample_stars = ", ".join(s.name for s in p.stars[:4])
-        if star_count > 4:
-            sample_stars += ", ..."
-        print(f"  Key stars  : {sample_stars}")
+    from stardots.presets import list_all_presets
 
-    print("\n" + "=" * 60)
-    print("Usage: python stardots.py constellation --preset <name>")
-    print("=" * 60)
+    print("=" * 65)
+    print("StarDots — Built-in Celestial Presets Catalog")
+    print("=" * 65)
+
+    catalog = list_all_presets()
+    current_cat = None
+    for item in catalog:
+        if item.category != current_cat:
+            current_cat = item.category
+            print(f"\n--- {current_cat.upper()} PRESETS ---")
+        print(f"\n* {item.key.upper()}: {item.title}")
+        print(f"  Description : {item.description}")
+        details = ", ".join(f"{k}={v}" for k, v in item.parameters.items())
+        print(f"  Parameters  : {details}")
+
+    print("\n" + "=" * 65)
+    print("Usage examples:")
+    print("  python stardots.py constellation --preset orion")
+    print("  python stardots.py constellation --preset big-dipper")
+    print("  python stardots.py interactive")
+    print("=" * 65)
     return 0
 
 
@@ -271,8 +274,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if not args.subcommand:
-        parser.print_help()
-        return 0
+        if sys.stdin.isatty():
+            from stardots.interactive import run_interactive
+            return run_interactive()
+        else:
+            parser.print_help()
+            return 0
 
     if args.subcommand == "starfield":
         return run_starfield(args)
@@ -285,8 +292,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.subcommand == "presets":
         return run_presets()
     elif args.subcommand == "interactive":
-        sys.stderr.write("Interactive mode will be plugged in Stage 3.\n")
-        return 1
+        from stardots.interactive import run_interactive
+        return run_interactive()
     else:
         parser.print_help()
         return 0
