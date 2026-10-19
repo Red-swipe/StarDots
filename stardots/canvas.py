@@ -1,6 +1,15 @@
 """Canvas representation for 2D character grids in StarDots."""
 
+import shutil
 from typing import Callable, Iterable, List, Optional, Set, Tuple
+
+
+def get_terminal_canvas_size(fallback_w: int = 80, fallback_h: int = 24, margin_w: int = 0, margin_h: int = 2) -> Tuple[int, int]:
+    """Get dimensions suited to current terminal window, reserving margin for terminal prompts."""
+    size = shutil.get_terminal_size(fallback=(fallback_w, fallback_h))
+    w = max(10, size.columns - margin_w)
+    h = max(5, size.lines - margin_h)
+    return w, h
 
 
 class Canvas:

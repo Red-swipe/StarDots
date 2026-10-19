@@ -43,10 +43,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     sf_parser.add_argument("--width", type=int, default=80, help="Canvas width in columns")
     sf_parser.add_argument("--height", type=int, default=24, help="Canvas height in rows")
+    sf_parser.add_argument("--fit-terminal", action="store_true", help="Automatically fit dimensions to current terminal window")
     sf_parser.add_argument("--density", type=float, default=0.08, help="Star density between 0.0 and 1.0")
     sf_parser.add_argument("--seed", type=int, default=None, help="Integer random seed for reproducibility")
     sf_parser.add_argument("--palette", type=str, default=None, help="Custom star characters (e.g. '.*+o')")
     sf_parser.add_argument("--output", "-o", type=str, default=None, help="Save generated artwork to file path")
+    sf_parser.add_argument("--force", "-f", action="store_true", help="Allow overwriting existing output file")
 
     # Galaxy subcommand
     gal_parser = subparsers.add_parser(
@@ -56,10 +58,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     gal_parser.add_argument("--width", type=int, default=100, help="Canvas width in columns")
     gal_parser.add_argument("--height", type=int, default=30, help="Canvas height in rows")
+    gal_parser.add_argument("--fit-terminal", action="store_true", help="Automatically fit dimensions to current terminal window")
     gal_parser.add_argument("--arms", type=int, default=2, help="Number of spiral arms")
     gal_parser.add_argument("--winding", type=float, default=2.4, help="Spiral winding factor")
     gal_parser.add_argument("--seed", type=int, default=None, help="Integer random seed")
     gal_parser.add_argument("--output", "-o", type=str, default=None, help="Save output to file")
+    gal_parser.add_argument("--force", "-f", action="store_true", help="Allow overwriting existing output file")
 
     # Constellation subcommand
     const_parser = subparsers.add_parser(
@@ -70,9 +74,11 @@ def create_parser() -> argparse.ArgumentParser:
     const_parser.add_argument("--preset", type=str, default="orion", help="Constellation preset (e.g. orion, big-dipper, cassiopeia)")
     const_parser.add_argument("--width", type=int, default=80, help="Canvas width in columns")
     const_parser.add_argument("--height", type=int, default=24, help="Canvas height in rows")
+    const_parser.add_argument("--fit-terminal", action="store_true", help="Automatically fit dimensions to current terminal window")
     const_parser.add_argument("--seed", type=int, default=None, help="Integer random seed for background stars")
     const_parser.add_argument("--no-labels", action="store_true", help="Omit constellation star labels")
     const_parser.add_argument("--output", "-o", type=str, default=None, help="Save output to file")
+    const_parser.add_argument("--force", "-f", action="store_true", help="Allow overwriting existing output file")
 
     # Nebula subcommand
     neb_parser = subparsers.add_parser(
@@ -82,10 +88,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     neb_parser.add_argument("--width", type=int, default=80, help="Canvas width in columns")
     neb_parser.add_argument("--height", type=int, default=24, help="Canvas height in rows")
+    neb_parser.add_argument("--fit-terminal", action="store_true", help="Automatically fit dimensions to current terminal window")
     neb_parser.add_argument("--clusters", type=int, default=5, help="Number of cloud puff centers")
     neb_parser.add_argument("--ascii-only", action="store_true", help="Use strictly basic ASCII characters without Unicode")
     neb_parser.add_argument("--seed", type=int, default=None, help="Integer random seed")
     neb_parser.add_argument("--output", "-o", type=str, default=None, help="Save output to file")
+    neb_parser.add_argument("--force", "-f", action="store_true", help="Allow overwriting existing output file")
 
     # Presets listing subcommand
     subparsers.add_parser(
@@ -102,8 +110,39 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _handle_terminal_fit(args: argparse.Namespace) -> None:
+    """Adjust width and height if --fit-terminal is requested."""
+    if getattr(args, "fit_terminal", False):
+        from stardots.canvas import get_terminal_canvas_size
+        args.width, args.height = get_terminal_canvas_size(
+            fallback_w=args.width, fallback_h=args.height
+        )
+
+
+def _handle_save_output(artwork: str, destination: Optional[str], prefix: str, force: bool) -> bool:
+    """Export artwork safely to disk if destination is provided."""
+    if not destination:
+        return True
+    from stardots.export import ExportError, export_artwork
+
+    try:
+        saved_path = export_artwork(
+            artwork=artwork,
+            destination=destination,
+            default_prefix=prefix,
+            allow_overwrite=force,
+            conflict_strategy="error" if not force else "auto_rename",
+        )
+        print(f"\n[Saved to {saved_path}]")
+        return True
+    except ExportError as e:
+        sys.stderr.write(f"Export error: {e}\n")
+        return False
+
+
 def run_starfield(args: argparse.Namespace) -> int:
     """Execute starfield generation with validated parameters."""
+    _handle_terminal_fit(args)
     if args.width <= 0:
         sys.stderr.write(f"Error: --width must be positive, got {args.width}\n")
         return 1
@@ -127,10 +166,8 @@ def run_starfield(args: argparse.Namespace) -> int:
         artwork = gen.render()
         print(artwork)
 
-        if getattr(args, "output", None):
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(artwork + "\n")
-            print(f"\n[Saved to {args.output}]")
+        if not _handle_save_output(artwork, getattr(args, "output", None), "starfield", getattr(args, "force", False)):
+            return 1
         return 0
     except Exception as e:
         sys.stderr.write(f"Error generating starfield: {e}\n")
@@ -139,6 +176,7 @@ def run_starfield(args: argparse.Namespace) -> int:
 
 def run_galaxy(args: argparse.Namespace) -> int:
     """Execute spiral galaxy generation."""
+    _handle_terminal_fit(args)
     if args.width <= 0:
         sys.stderr.write(f"Error: --width must be positive, got {args.width}\n")
         return 1
@@ -160,10 +198,8 @@ def run_galaxy(args: argparse.Namespace) -> int:
         artwork = gen.render()
         print(artwork)
 
-        if getattr(args, "output", None):
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(artwork + "\n")
-            print(f"\n[Saved to {args.output}]")
+        if not _handle_save_output(artwork, getattr(args, "output", None), "galaxy", getattr(args, "force", False)):
+            return 1
         return 0
     except Exception as e:
         sys.stderr.write(f"Error generating galaxy: {e}\n")
@@ -172,6 +208,7 @@ def run_galaxy(args: argparse.Namespace) -> int:
 
 def run_constellation(args: argparse.Namespace) -> int:
     """Execute constellation generation."""
+    _handle_terminal_fit(args)
     if args.width <= 0:
         sys.stderr.write(f"Error: --width must be positive, got {args.width}\n")
         return 1
@@ -196,10 +233,8 @@ def run_constellation(args: argparse.Namespace) -> int:
         artwork = gen.render()
         print(artwork)
 
-        if getattr(args, "output", None):
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(artwork + "\n")
-            print(f"\n[Saved to {args.output}]")
+        if not _handle_save_output(artwork, getattr(args, "output", None), f"constellation_{norm_key}", getattr(args, "force", False)):
+            return 1
         return 0
     except Exception as e:
         sys.stderr.write(f"Error generating constellation: {e}\n")
@@ -208,6 +243,7 @@ def run_constellation(args: argparse.Namespace) -> int:
 
 def run_nebula(args: argparse.Namespace) -> int:
     """Execute nebula generation."""
+    _handle_terminal_fit(args)
     if args.width <= 0:
         sys.stderr.write(f"Error: --width must be positive, got {args.width}\n")
         return 1
@@ -229,10 +265,8 @@ def run_nebula(args: argparse.Namespace) -> int:
         artwork = gen.render()
         print(artwork)
 
-        if getattr(args, "output", None):
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(artwork + "\n")
-            print(f"\n[Saved to {args.output}]")
+        if not _handle_save_output(artwork, getattr(args, "output", None), "nebula", getattr(args, "force", False)):
+            return 1
         return 0
     except Exception as e:
         sys.stderr.write(f"Error generating nebula: {e}\n")

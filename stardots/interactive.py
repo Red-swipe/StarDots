@@ -184,29 +184,30 @@ class InteractiveSession:
         self.display_artwork(f"Preset: {preset.title}", artwork)
 
     def handle_save(self) -> None:
-        """Save the last generated artwork."""
+        """Save the last generated artwork with collision protection."""
         if not self.last_artwork:
             print("\n[!] No artwork generated yet. Generate something first!")
             return
 
-        # We will use export module (or direct fallback if export module imported)
-        from pathlib import Path
-        output_dir = Path("outputs")
-        output_dir.mkdir(parents=True, exist_ok=True)
+        from stardots.export import ExportError, export_artwork
 
-        default_name = "artwork.txt"
-        target_name = input(f"Enter filename to save in outputs/ [{default_name}]: ").strip()
-        if not target_name:
-            target_name = default_name
-        if not target_name.endswith(".txt"):
-            target_name += ".txt"
+        suggested_prefix = (self.last_mode or "artwork").split()[0].lower().replace(":", "")
+        target_name = input(f"Enter filename/path (leave blank for auto-timestamp in outputs/): ").strip()
+        destination = target_name if target_name else None
 
-        target_path = output_dir / target_name
         try:
-            target_path.write_text(self.last_artwork + "\n", encoding="utf-8")
-            print(f"\n[✓] Successfully saved to {target_path.resolve()}")
+            saved_path = export_artwork(
+                artwork=self.last_artwork,
+                destination=destination,
+                default_prefix=suggested_prefix,
+                allow_overwrite=False,
+                conflict_strategy="auto_rename",
+            )
+            print(f"\n[✓] Successfully saved to: {saved_path}")
+        except ExportError as e:
+            print(f"\n[!] Export failed: {e}")
         except Exception as e:
-            print(f"\n[!] Error saving file: {e}")
+            print(f"\n[!] Unexpected error saving file: {e}")
 
     def run(self) -> int:
         """Main interaction loop."""
